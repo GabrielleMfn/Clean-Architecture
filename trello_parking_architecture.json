@@ -1,0 +1,92 @@
+{
+  "name": "Système de Parking Partagé - Clean Architecture",
+  "description": "Tableau Trello pour suivre le développement du projet basé sur la Clean Architecture.",
+  "lists": [
+    {
+      "name": "Backlog",
+      "cards": [
+        {"name": "Idées futures : ajout de paiement en ligne", "labels": ["🟨 Infrastructure", "🟧 Presentation"]},
+        {"name": "Support mobile (API + UI responsive)", "labels": ["🟧 Presentation", "🟪 Tests"]}
+      ]
+    },
+    {
+      "name": "À faire (To Do)",
+      "cards": [
+        {"name": "Domain - Implémenter entité User", "labels": ["🟩 Domain"]},
+        {"name": "Domain - Implémenter entité Parking", "labels": ["🟩 Domain"]},
+        {"name": "UseCase - RegisterUser", "labels": ["🟦 UseCase", "🟩 Domain"]},
+        {"name": "UseCase - CreateReservation", "labels": ["🟦 UseCase", "🟩 Domain", "🟨 Infrastructure"]},
+        {"name": "Infrastructure - MySQLUserRepository", "labels": ["🟨 Infrastructure"]},
+        {"name": "Infrastructure - JWTService", "labels": ["🟨 Infrastructure", "🟥 Security"]},
+        {"name": "Presentation - UserController (Web)", "labels": ["🟧 Presentation", "🟦 UseCase"]},
+        {"name": "Presentation - AuthApiController (API)", "labels": ["🟧 Presentation", "🟦 UseCase"]},
+        {"name": "Tests - UserTest", "labels": ["🟪 Tests", "🟩 Domain"]},
+        {"name": "Sécurité - Gestion JWT et hashage", "labels": ["🟥 Security", "🟨 Infrastructure"]}
+      ]
+    },
+    {
+      "name": "En cours (In Progress)",
+      "cards": [
+        {
+          "name": "UseCase - CreateReservation",
+          "labels": ["🟦 UseCase", "🟩 Domain", "🟨 Infrastructure"],
+          "checklists": [
+            {
+              "name": "Checklist développement",
+              "items": [
+                "Vérifier disponibilité parking",
+                "Calculer prix via ValueObject Price",
+                "Créer objet Reservation",
+                "Persister via ReservationRepository",
+                "Écrire test unitaire"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "En revue (Code Review / Test)",
+      "cards": [
+        {"name": "Domain - ValueObject Email", "labels": ["🟩 Domain"]},
+        {"name": "Infrastructure - PasswordHasher", "labels": ["🟨 Infrastructure", "🟥 Security"]}
+      ]
+    },
+    {
+      "name": "Fait (Done)",
+      "cards": [
+        {"name": "Domain - ValueObject GPSCoordinates", "labels": ["🟩 Domain"]},
+        {"name": "UseCase - AuthenticateUser", "labels": ["🟦 UseCase"]},
+        {"name": "Infrastructure - MySQLConnection", "labels": ["🟨 Infrastructure"]},
+        {"name": "Presentation - Login view (login.php)", "labels": ["🟧 Presentation"]},
+        {"name": "Tests - ParkingTest", "labels": ["🟪 Tests"]}
+      ]
+    },
+    {
+      "name": "Bugs / Retours",
+      "cards": [
+        {"name": "Erreur sur calcul du tarif (Price.php)", "labels": ["⚪ Bug", "🟩 Domain"]},
+        {"name": "Mauvaise redirection après connexion", "labels": ["⚪ Bug", "🟧 Presentation"]}
+      ]
+    },
+    {
+      "name": "Documentation / Tests",
+      "cards": [
+        {"name": "Rédiger README.md complet", "labels": ["🟫 Documentation"]},
+        {"name": "Créer schéma UML du domaine", "labels": ["🟫 Documentation", "🟩 Domain"]},
+        {"name": "Configurer phpunit.xml", "labels": ["🟪 Tests"]},
+        {"name": "Documenter API (routes + réponses JSON)", "labels": ["🟫 Documentation", "🟧 Presentation"]}
+      ]
+    }
+  ],
+  "labels": [
+    {"name": "🟩 Domain", "color": "green"},
+    {"name": "🟦 UseCase", "color": "blue"},
+    {"name": "🟨 Infrastructure", "color": "yellow"},
+    {"name": "🟧 Presentation", "color": "orange"},
+    {"name": "🟪 Tests", "color": "purple"},
+    {"name": "🟥 Security", "color": "red"},
+    {"name": "🟫 Documentation", "color": "brown"},
+    {"name": "⚪ Bug", "color": "grey"}
+  ]
+}
