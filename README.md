@@ -157,7 +157,11 @@ Authorization: Bearer [votre-token]
 
 ## Équipe
 
-Projet réalisé par [Noms des membres de l'équipe]
+### Projet réalisé par : 
+- 
+- 
+- 
+- 
 
 ## Licence
 

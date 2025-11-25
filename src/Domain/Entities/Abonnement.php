@@ -7,27 +7,42 @@ use App\Domain\ValueObjects\TimeSlot;
 
 class Abonnement
 {
+    public const TYPE_TOTAL = 'total';
+    public const TYPE_WEEKEND = 'weekend';
+    public const TYPE_SOIR = 'soir';
+    public const TYPE_SPECIFIQUE = 'specifique';
+
+    public const MIN_DURATION_MONTHS = 1;
+    public const MAX_DURATION_MONTHS = 12;
+
     private ?int $id;
     private int $userId;
     private int $parkingId;
     private string $type;
     private array $timeSlots;
-    private int $startDate;
-    private int $endDate;
+    private \DateTimeImmutable $startDate;
+    private \DateTimeImmutable $endDate;
     private Price $price;
     private bool $isPaid;
-    private \DateTime $createdAt;
+    private \DateTimeImmutable $createdAt;
 
     public function __construct(
         int $userId,
         int $parkingId,
         string $type,
         array $timeSlots,
-        int $startDate,
-        int $endDate,
+        \DateTimeImmutable $startDate,
+        \DateTimeImmutable $endDate,
         Price $price,
+        \DateTimeImmutable $createdAt,
         ?int $id = null
     ) {
+        $this->validateUserId($userId);
+        $this->validateParkingId($parkingId);
+        $this->validateType($type);
+        $this->validateTimeSlots($timeSlots);
+        $this->validateDateRange($startDate, $endDate);
+
         $this->id = $id;
         $this->userId = $userId;
         $this->parkingId = $parkingId;
@@ -37,7 +52,60 @@ class Abonnement
         $this->endDate = $endDate;
         $this->price = $price;
         $this->isPaid = false;
-        $this->createdAt = new \DateTime();
+        $this->createdAt = $createdAt;
+    }
+
+    private function validateUserId(int $userId): void
+    {
+        if ($userId <= 0) {
+            throw new \InvalidArgumentException("L'ID utilisateur doit etre positif");
+        }
+    }
+
+    private function validateParkingId(int $parkingId): void
+    {
+        if ($parkingId <= 0) {
+            throw new \InvalidArgumentException("L'ID parking doit etre positif");
+        }
+    }
+
+    private function validateType(string $type): void
+    {
+        $validTypes = [self::TYPE_TOTAL, self::TYPE_WEEKEND, self::TYPE_SOIR, self::TYPE_SPECIFIQUE];
+        if (!in_array($type, $validTypes)) {
+            throw new \InvalidArgumentException("Type d'abonnement invalide");
+        }
+    }
+
+    private function validateTimeSlots(array $timeSlots): void
+    {
+        if (empty($timeSlots)) {
+            throw new \InvalidArgumentException("Au moins un creneau horaire est requis");
+        }
+        foreach ($timeSlots as $slot) {
+            if (!($slot instanceof TimeSlot)) {
+                throw new \InvalidArgumentException("Tous les creneaux doivent etre des instances de TimeSlot");
+            }
+        }
+    }
+
+    private function validateDateRange(\DateTimeImmutable $startDate, \DateTimeImmutable $endDate): void
+    {
+        if ($startDate >= $endDate) {
+            throw new \InvalidArgumentException("La date de debut doit etre anterieure a la date de fin");
+        }
+
+        $durationInSeconds = $endDate->getTimestamp() - $startDate->getTimestamp();
+        $minDurationSeconds = self::MIN_DURATION_MONTHS * 30 * 86400;
+        $maxDurationSeconds = self::MAX_DURATION_MONTHS * 30 * 86400;
+
+        if ($durationInSeconds < $minDurationSeconds) {
+            throw new \InvalidArgumentException("La duree minimale est de 1 mois");
+        }
+
+        if ($durationInSeconds > $maxDurationSeconds) {
+            throw new \InvalidArgumentException("La duree maximale est de 12 mois");
+        }
     }
 
     public function getId(): ?int
@@ -45,19 +113,9 @@ class Abonnement
         return $this->id;
     }
 
-    public function setId(int $id): void
-    {
-        $this->id = $id;
-    }
-
     public function getUserId(): int
     {
         return $this->userId;
-    }
-
-    public function setUserId(int $userId): void
-    {
-        $this->userId = $userId;
     }
 
     public function getParkingId(): int
@@ -65,19 +123,9 @@ class Abonnement
         return $this->parkingId;
     }
 
-    public function setParkingId(int $parkingId): void
-    {
-        $this->parkingId = $parkingId;
-    }
-
     public function getType(): string
     {
         return $this->type;
-    }
-
-    public function setType(string $type): void
-    {
-        $this->type = $type;
     }
 
     public function getTimeSlots(): array
@@ -85,29 +133,24 @@ class Abonnement
         return $this->timeSlots;
     }
 
-    public function setTimeSlots(array $timeSlots): void
-    {
-        $this->timeSlots = $timeSlots;
-    }
-
-    public function getStartDate(): int
+    public function getStartDate(): \DateTimeImmutable
     {
         return $this->startDate;
     }
 
-    public function setStartDate(int $startDate): void
-    {
-        $this->startDate = $startDate;
-    }
-
-    public function getEndDate(): int
+    public function getEndDate(): \DateTimeImmutable
     {
         return $this->endDate;
     }
 
-    public function setEndDate(int $endDate): void
+    public function getStartTimestamp(): int
     {
-        $this->endDate = $endDate;
+        return $this->startDate->getTimestamp();
+    }
+
+    public function getEndTimestamp(): int
+    {
+        return $this->endDate->getTimestamp();
     }
 
     public function getPrice(): Price
@@ -115,46 +158,28 @@ class Abonnement
         return $this->price;
     }
 
-    public function setPrice(Price $price): void
-    {
-        $this->price = $price;
-    }
-
     public function getIsPaid(): bool
     {
         return $this->isPaid;
     }
 
-    public function setIsPaid(bool $isPaid): void
+    public function markAsPaid(): void
     {
-        $this->isPaid = $isPaid;
+        $this->isPaid = true;
     }
 
-    public function getCreatedAt(): \DateTime
+    public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTime $createdAt): void
+    public function isValidAt(\DateTimeImmutable $dateTime): bool
     {
-        $this->createdAt = $createdAt;
+        return $dateTime >= $this->startDate && $dateTime <= $this->endDate;
     }
 
-    public function isActive(): bool
+    public function coversTimeSlot(int $dayOfWeek, int $timeOfDay): bool
     {
-        $now = time();
-        return $now >= $this->startDate && $now <= $this->endDate;
-    }
-
-    public function isActiveAt(int $timestamp): bool
-    {
-        if ($timestamp < $this->startDate || $timestamp > $this->endDate) {
-            return false;
-        }
-
-        $dayOfWeek = date('N', $timestamp);
-        $timeOfDay = (int)date('H', $timestamp) * 3600 + (int)date('i', $timestamp) * 60;
-
         foreach ($this->timeSlots as $slot) {
             if ($slot->isActiveAt($dayOfWeek, $timeOfDay)) {
                 return true;
@@ -166,9 +191,31 @@ class Abonnement
 
     public function getDurationInMonths(): int
     {
-        $start = new \DateTime('@' . $this->startDate);
-        $end = new \DateTime('@' . $this->endDate);
-        $interval = $start->diff($end);
+        $interval = $this->startDate->diff($this->endDate);
         return $interval->m + ($interval->y * 12);
+    }
+
+    public function belongsToUser(int $userId): bool
+    {
+        return $this->userId === $userId;
+    }
+
+    public function isForParking(int $parkingId): bool
+    {
+        return $this->parkingId === $parkingId;
+    }
+
+    public function isTotalAccess(): bool
+    {
+        return $this->type === self::TYPE_TOTAL;
+    }
+
+    public function getRemainingDays(\DateTimeImmutable $currentDateTime): int
+    {
+        if ($currentDateTime > $this->endDate) {
+            return 0;
+        }
+        $interval = $currentDateTime->diff($this->endDate);
+        return $interval->days;
     }
 }

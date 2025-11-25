@@ -6,24 +6,30 @@ use App\Domain\ValueObjects\Price;
 
 class Stationnement
 {
+    private const PENALTY_AMOUNT = 20.0;
+
     private ?int $id;
     private int $userId;
     private int $parkingId;
     private ?int $reservationId;
-    private int $startTime;
-    private ?int $endTime;
+    private \DateTimeImmutable $startTime;
+    private ?\DateTimeImmutable $endTime;
     private ?Price $price;
     private bool $hasPenalty;
     private float $penaltyAmount;
-    private \DateTime $createdAt;
+    private \DateTimeImmutable $createdAt;
 
     public function __construct(
         int $userId,
         int $parkingId,
-        int $startTime,
+        \DateTimeImmutable $startTime,
+        \DateTimeImmutable $createdAt,
         ?int $reservationId = null,
         ?int $id = null
     ) {
+        $this->validateUserId($userId);
+        $this->validateParkingId($parkingId);
+
         $this->id = $id;
         $this->userId = $userId;
         $this->parkingId = $parkingId;
@@ -33,7 +39,21 @@ class Stationnement
         $this->price = null;
         $this->hasPenalty = false;
         $this->penaltyAmount = 0.0;
-        $this->createdAt = new \DateTime();
+        $this->createdAt = $createdAt;
+    }
+
+    private function validateUserId(int $userId): void
+    {
+        if ($userId <= 0) {
+            throw new \InvalidArgumentException("L'ID utilisateur doit etre positif");
+        }
+    }
+
+    private function validateParkingId(int $parkingId): void
+    {
+        if ($parkingId <= 0) {
+            throw new \InvalidArgumentException("L'ID parking doit etre positif");
+        }
     }
 
     public function getId(): ?int
@@ -41,19 +61,9 @@ class Stationnement
         return $this->id;
     }
 
-    public function setId(int $id): void
-    {
-        $this->id = $id;
-    }
-
     public function getUserId(): int
     {
         return $this->userId;
-    }
-
-    public function setUserId(int $userId): void
-    {
-        $this->userId = $userId;
     }
 
     public function getParkingId(): int
@@ -61,39 +71,29 @@ class Stationnement
         return $this->parkingId;
     }
 
-    public function setParkingId(int $parkingId): void
-    {
-        $this->parkingId = $parkingId;
-    }
-
     public function getReservationId(): ?int
     {
         return $this->reservationId;
     }
 
-    public function setReservationId(?int $reservationId): void
-    {
-        $this->reservationId = $reservationId;
-    }
-
-    public function getStartTime(): int
+    public function getStartTime(): \DateTimeImmutable
     {
         return $this->startTime;
     }
 
-    public function setStartTime(int $startTime): void
-    {
-        $this->startTime = $startTime;
-    }
-
-    public function getEndTime(): ?int
+    public function getEndTime(): ?\DateTimeImmutable
     {
         return $this->endTime;
     }
 
-    public function setEndTime(?int $endTime): void
+    public function getStartTimestamp(): int
     {
-        $this->endTime = $endTime;
+        return $this->startTime->getTimestamp();
+    }
+
+    public function getEndTimestamp(): ?int
+    {
+        return $this->endTime?->getTimestamp();
     }
 
     public function getPrice(): ?Price
@@ -111,42 +111,59 @@ class Stationnement
         return $this->hasPenalty;
     }
 
-    public function setHasPenalty(bool $hasPenalty): void
-    {
-        $this->hasPenalty = $hasPenalty;
-    }
-
     public function getPenaltyAmount(): float
     {
         return $this->penaltyAmount;
     }
 
-    public function setPenaltyAmount(float $penaltyAmount): void
+    public function applyPenalty(float $amount = self::PENALTY_AMOUNT): void
     {
-        $this->penaltyAmount = $penaltyAmount;
+        if ($this->hasPenalty) {
+            throw new \DomainException("Une penalite a deja ete appliquee");
+        }
+        $this->hasPenalty = true;
+        $this->penaltyAmount = $amount;
     }
 
-    public function getCreatedAt(): \DateTime
+    public function belongsToUser(int $userId): bool
+    {
+        return $this->userId === $userId;
+    }
+
+    public function isForParking(int $parkingId): bool
+    {
+        return $this->parkingId === $parkingId;
+    }
+
+    public function hasReservation(): bool
+    {
+        return $this->reservationId !== null;
+    }
+
+    public function isLinkedToReservation(int $reservationId): bool
+    {
+        return $this->reservationId === $reservationId;
+    }
+
+    public function exceedsReservation(\DateTimeImmutable $reservationEndTime): bool
+    {
+        if ($this->endTime === null) {
+            return false;
+        }
+        return $this->endTime > $reservationEndTime;
+    }
+
+    public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTime $createdAt): void
-    {
-        $this->createdAt = $createdAt;
-    }
-
-    public function isActive(): bool
-    {
-        return $this->endTime === null;
-    }
-
-    public function isActiveAt(int $timestamp): bool
+    public function isActiveAt(\DateTimeImmutable $dateTime): bool
     {
         if ($this->endTime === null) {
-            return $timestamp >= $this->startTime;
+            return $dateTime >= $this->startTime;
         }
-        return $timestamp >= $this->startTime && $timestamp < $this->endTime;
+        return $dateTime >= $this->startTime && $dateTime < $this->endTime;
     }
 
     public function getDuration(): ?int
@@ -154,11 +171,25 @@ class Stationnement
         if ($this->endTime === null) {
             return null;
         }
-        return $this->endTime - $this->startTime;
+        return $this->endTime->getTimestamp() - $this->startTime->getTimestamp();
     }
 
-    public function endStationnement(int $endTime): void
+    public function endStationnement(\DateTimeImmutable $endTime): void
     {
+        if ($this->endTime !== null) {
+            throw new \DomainException("Le stationnement est deja termine");
+        }
+        if ($endTime <= $this->startTime) {
+            throw new \InvalidArgumentException("La date de fin doit etre posterieure a la date de debut");
+        }
         $this->endTime = $endTime;
+    }
+
+    public function getTotalAmount(): float
+    {
+        if ($this->price === null) {
+            return 0.0;
+        }
+        return $this->price->getAmount() + $this->penaltyAmount;
     }
 }

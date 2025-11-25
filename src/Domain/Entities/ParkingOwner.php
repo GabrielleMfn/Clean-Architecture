@@ -2,30 +2,62 @@
 
 namespace App\Domain\Entities;
 
+use App\Domain\ValueObjects\Email;
+
 class ParkingOwner
 {
     private ?int $id;
-    private string $email;
-    private string $password;
+    private Email $email;
+    private string $passwordHash;
     private string $nom;
     private string $prenom;
-    private array $parkings;
-    private \DateTime $createdAt;
+    private \DateTimeImmutable $createdAt;
 
     public function __construct(
-        string $email,
-        string $password,
+        Email $email,
+        string $passwordHash,
         string $nom,
         string $prenom,
+        \DateTimeImmutable $createdAt,
         ?int $id = null
     ) {
+        $this->validateNom($nom);
+        $this->validatePrenom($prenom);
+        $this->validatePasswordHash($passwordHash);
+
         $this->id = $id;
         $this->email = $email;
-        $this->password = $password;
+        $this->passwordHash = $passwordHash;
         $this->nom = $nom;
         $this->prenom = $prenom;
-        $this->parkings = [];
-        $this->createdAt = new \DateTime();
+        $this->createdAt = $createdAt;
+    }
+
+    private function validateNom(string $nom): void
+    {
+        if (empty(trim($nom))) {
+            throw new \InvalidArgumentException("Le nom ne peut pas etre vide");
+        }
+        if (strlen($nom) > 100) {
+            throw new \InvalidArgumentException("Le nom ne peut pas depasser 100 caracteres");
+        }
+    }
+
+    private function validatePrenom(string $prenom): void
+    {
+        if (empty(trim($prenom))) {
+            throw new \InvalidArgumentException("Le prenom ne peut pas etre vide");
+        }
+        if (strlen($prenom) > 100) {
+            throw new \InvalidArgumentException("Le prenom ne peut pas depasser 100 caracteres");
+        }
+    }
+
+    private function validatePasswordHash(string $passwordHash): void
+    {
+        if (empty($passwordHash)) {
+            throw new \InvalidArgumentException("Le hash du mot de passe ne peut pas etre vide");
+        }
     }
 
     public function getId(): ?int
@@ -33,29 +65,30 @@ class ParkingOwner
         return $this->id;
     }
 
-    public function setId(int $id): void
-    {
-        $this->id = $id;
-    }
-
-    public function getEmail(): string
+    public function getEmail(): Email
     {
         return $this->email;
     }
 
-    public function setEmail(string $email): void
+    public function getEmailValue(): string
     {
-        $this->email = $email;
+        return $this->email->getValue();
     }
 
-    public function getPassword(): string
+    public function getPasswordHash(): string
     {
-        return $this->password;
+        return $this->passwordHash;
     }
 
-    public function setPassword(string $password): void
+    public function updatePassword(string $newPasswordHash): void
     {
-        $this->password = $password;
+        $this->validatePasswordHash($newPasswordHash);
+        $this->passwordHash = $newPasswordHash;
+    }
+
+    public function verifyPassword(string $plainPassword): bool
+    {
+        return password_verify($plainPassword, $this->passwordHash);
     }
 
     public function getNom(): string
@@ -63,38 +96,26 @@ class ParkingOwner
         return $this->nom;
     }
 
-    public function setNom(string $nom): void
-    {
-        $this->nom = $nom;
-    }
-
     public function getPrenom(): string
     {
         return $this->prenom;
     }
 
-    public function setPrenom(string $prenom): void
+    public function updateProfile(string $nom, string $prenom): void
     {
+        $this->validateNom($nom);
+        $this->validatePrenom($prenom);
+        $this->nom = $nom;
         $this->prenom = $prenom;
     }
 
-    public function getParkings(): array
+    public function getFullName(): string
     {
-        return $this->parkings;
+        return $this->prenom . ' ' . $this->nom;
     }
 
-    public function addParking($parking): void
-    {
-        $this->parkings[] = $parking;
-    }
-
-    public function getCreatedAt(): \DateTime
+    public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
-    }
-
-    public function setCreatedAt(\DateTime $createdAt): void
-    {
-        $this->createdAt = $createdAt;
     }
 }

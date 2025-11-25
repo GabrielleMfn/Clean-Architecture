@@ -9,19 +9,24 @@ class Reservation
     private ?int $id;
     private int $userId;
     private int $parkingId;
-    private int $startTime;
-    private int $endTime;
+    private \DateTimeImmutable $startTime;
+    private \DateTimeImmutable $endTime;
     private ?Price $price;
     private bool $isPaid;
-    private \DateTime $createdAt;
+    private \DateTimeImmutable $createdAt;
 
     public function __construct(
         int $userId,
         int $parkingId,
-        int $startTime,
-        int $endTime,
+        \DateTimeImmutable $startTime,
+        \DateTimeImmutable $endTime,
+        \DateTimeImmutable $createdAt,
         ?int $id = null
     ) {
+        $this->validateUserId($userId);
+        $this->validateParkingId($parkingId);
+        $this->validateTimeRange($startTime, $endTime);
+
         $this->id = $id;
         $this->userId = $userId;
         $this->parkingId = $parkingId;
@@ -29,7 +34,39 @@ class Reservation
         $this->endTime = $endTime;
         $this->price = null;
         $this->isPaid = false;
-        $this->createdAt = new \DateTime();
+        $this->createdAt = $createdAt;
+    }
+
+    private function validateUserId(int $userId): void
+    {
+        if ($userId <= 0) {
+            throw new \InvalidArgumentException("L'ID utilisateur doit etre positif");
+        }
+    }
+
+    private function validateParkingId(int $parkingId): void
+    {
+        if ($parkingId <= 0) {
+            throw new \InvalidArgumentException("L'ID parking doit etre positif");
+        }
+    }
+
+    private function validateTimeRange(\DateTimeImmutable $startTime, \DateTimeImmutable $endTime): void
+    {
+        if ($startTime >= $endTime) {
+            throw new \InvalidArgumentException("La date de debut doit etre anterieure a la date de fin");
+        }
+
+        $duration = $endTime->getTimestamp() - $startTime->getTimestamp();
+        $minDuration = 900;
+        if ($duration < $minDuration) {
+            throw new \InvalidArgumentException("La duree minimale est de 15 minutes");
+        }
+
+        $maxDuration = 86400 * 7;
+        if ($duration > $maxDuration) {
+            throw new \InvalidArgumentException("La duree maximale est de 7 jours");
+        }
     }
 
     public function getId(): ?int
@@ -37,19 +74,9 @@ class Reservation
         return $this->id;
     }
 
-    public function setId(int $id): void
-    {
-        $this->id = $id;
-    }
-
     public function getUserId(): int
     {
         return $this->userId;
-    }
-
-    public function setUserId(int $userId): void
-    {
-        $this->userId = $userId;
     }
 
     public function getParkingId(): int
@@ -57,29 +84,24 @@ class Reservation
         return $this->parkingId;
     }
 
-    public function setParkingId(int $parkingId): void
-    {
-        $this->parkingId = $parkingId;
-    }
-
-    public function getStartTime(): int
+    public function getStartTime(): \DateTimeImmutable
     {
         return $this->startTime;
     }
 
-    public function setStartTime(int $startTime): void
-    {
-        $this->startTime = $startTime;
-    }
-
-    public function getEndTime(): int
+    public function getEndTime(): \DateTimeImmutable
     {
         return $this->endTime;
     }
 
-    public function setEndTime(int $endTime): void
+    public function getStartTimestamp(): int
     {
-        $this->endTime = $endTime;
+        return $this->startTime->getTimestamp();
+    }
+
+    public function getEndTimestamp(): int
+    {
+        return $this->endTime->getTimestamp();
     }
 
     public function getPrice(): ?Price
@@ -97,44 +119,53 @@ class Reservation
         return $this->isPaid;
     }
 
-    public function setIsPaid(bool $isPaid): void
+    public function markAsPaid(): void
     {
-        $this->isPaid = $isPaid;
+        $this->isPaid = true;
     }
 
-    public function getCreatedAt(): \DateTime
+    public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTime $createdAt): void
-    {
-        $this->createdAt = $createdAt;
-    }
-
     public function getDuration(): int
     {
-        return $this->endTime - $this->startTime;
+        return $this->endTime->getTimestamp() - $this->startTime->getTimestamp();
     }
 
-    public function isActiveAt(int $timestamp): bool
+    public function getDurationInQuarters(): int
     {
-        return $timestamp >= $this->startTime && $timestamp < $this->endTime;
+        return (int)ceil($this->getDuration() / 900);
     }
 
-    public function isActive(): bool
+    public function isActiveAt(\DateTimeImmutable $dateTime): bool
     {
-        $now = time();
-        return $now >= $this->startTime && $now < $this->endTime;
+        return $dateTime >= $this->startTime && $dateTime < $this->endTime;
     }
 
-    public function hasStarted(): bool
+    public function hasStarted(\DateTimeImmutable $currentDateTime): bool
     {
-        return time() >= $this->startTime;
+        return $currentDateTime >= $this->startTime;
     }
 
-    public function hasEnded(): bool
+    public function hasEnded(\DateTimeImmutable $currentDateTime): bool
     {
-        return time() >= $this->endTime;
+        return $currentDateTime >= $this->endTime;
+    }
+
+    public function overlaps(Reservation $other): bool
+    {
+        return !($this->endTime <= $other->startTime || $this->startTime >= $other->endTime);
+    }
+
+    public function belongsToUser(int $userId): bool
+    {
+        return $this->userId === $userId;
+    }
+
+    public function isForParking(int $parkingId): bool
+    {
+        return $this->parkingId === $parkingId;
     }
 }
